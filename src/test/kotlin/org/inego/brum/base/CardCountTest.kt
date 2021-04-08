@@ -4,7 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 
 
-fun count(field: CardStats.() -> Int) = (towns + industries).sumBy { it.field() }
+fun count(field: CardStats.() -> Int) = (towns + industryCards).sumBy { it.field() }
 
 
 class CardCountTest : FunSpec({
