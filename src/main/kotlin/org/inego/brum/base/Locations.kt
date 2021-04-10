@@ -1,9 +1,15 @@
 package org.inego.brum.base
 
+import org.inego.brum.base.Era.CANAL
+import org.inego.brum.base.Era.RAIL
+
 
 sealed class Location(
-    val name: String
-)
+    override val name: String
+) : MapGraphNode {
+
+    override fun toString() = name
+}
 
 
 sealed class Town(
@@ -41,7 +47,7 @@ object Nuneaton : Town("Nuneaton", 1, 1, 1, GoodsBrewery, CottonCoal)
 object Redditch : Town("Redditch", 1, 1, 1, GoodsCoal, IronWorks)
 
 
-val towns = setOf(
+val towns = listOf(
     Belper, Derby,
     Leek, StokeOnTrent, Stone, Uttoxeter,
     Stafford, BurtonOnTrent, Cannock, Tamworth, Warsall,
@@ -50,5 +56,124 @@ val towns = setOf(
 )
 
 
+open class Merchant(
+    name: String,
+    val slotCount: Int,
+    val reward: MerchantReward
+) : Location(name)
 
-class Merchant(name: String) : Location(name)
+
+object Oxford : Merchant("Oxford", 2, IncomeReward(2))
+object Gloucester : Merchant("Gloucester", 2, FreeDevelopReward)
+object Shrewsbury : Merchant("Shrewsbury", 1, VictoryPointsReward(4))
+object Warrington : Merchant("Warrington", 2, MoneyReward(5))
+object Nottingham : Merchant("Nottingham", 2, VictoryPointsReward(3))
+
+val merchants = listOf(Oxford, Gloucester, Shrewsbury, Warrington, Nottingham)
+
+
+
+open class FarmBrewery(
+    name: String
+) : Location(name)
+
+object CannockFarmBrewery : FarmBrewery("Cannock Farm")
+object KidderminsterWorcesterFarmBrewery : FarmBrewery("Worcester/Kidderminster Farm")
+
+val farmBreweries = listOf(CannockFarmBrewery, KidderminsterWorcesterFarmBrewery)
+
+
+enum class Era {
+    CANAL,
+    RAIL
+}
+
+
+class Link(
+    override val name: String,
+    val era: Era?
+) : MapGraphNode {
+    override fun toString(): String {
+        return if (era == null) name else "$name ($era)"
+    }
+}
+
+
+val gameGraph = MapGraph().apply {
+
+    add(towns)
+    add(merchants)
+    add(farmBreweries)
+
+    fun link(vararg locations: Location, era: Era? = null, customName: String? = null) {
+        for (location in locations) {
+            if (location !in nodes) {
+                throw IllegalStateException("Unknown location for a link: ${location.name}")
+            }
+        }
+        val name = customName ?: locations.joinToString(" - ") { it.name }
+        val link = Link(name, era)
+        add(link, *locations)
+    }
+
+    link(Oxford, Birmingham)
+    link(Oxford, Redditch)
+    link(Gloucester, Redditch)
+    link(Gloucester, Worcester)
+    link(Shrewsbury, Coalbrookdale)
+    link(Warrington, StokeOnTrent)
+    link(Nottingham, Derby)
+
+    link(Redditch, Birmingham, era = RAIL)
+
+    link(Worcester, Birmingham)
+    link(Worcester, Kidderminster, KidderminsterWorcesterFarmBrewery, customName = "Worcester - Kidderminster - Farm")
+    link(Kidderminster, Dudley)
+    link(Kidderminster, Coalbrookdale)
+
+    link(Dudley, Wolverhampton)
+    link(Dudley, Birmingham)
+    link(Coventry, Birmingham)
+    link(Coventry, Nuneaton, era = RAIL)
+    link(Birmingham, Nuneaton, era = RAIL)
+    link(Birmingham, Tamworth)
+    link(Birmingham, Warsall)
+
+    link(Nuneaton, Tamworth)
+
+    link(Coalbrookdale, Wolverhampton)
+    link(Wolverhampton, Warsall)
+    link(Wolverhampton, Cannock)
+    link(Warsall, Cannock)
+    link(Warsall, BurtonOnTrent, era = CANAL)
+    link(Warsall, Tamworth)
+
+    link(Tamworth, BurtonOnTrent)
+
+    link(Cannock, CannockFarmBrewery, customName = "Cannock - Farm")
+    link(Cannock, Stafford)
+    link(Cannock, BurtonOnTrent, era = RAIL)
+
+    link(BurtonOnTrent, Stone)
+    link(BurtonOnTrent, Derby)
+
+    link(Stafford, Stone)
+
+    link(Stone, StokeOnTrent)
+    link(Stone, Uttoxeter, era = RAIL)
+    link(Uttoxeter, Derby, era = RAIL)
+    link(Derby, Belper)
+
+    link(StokeOnTrent, Leek)
+    link(Leek, Belper)
+}
+
+
+fun main() {
+    gameGraph.nodes.sortedBy { it.name }.forEach { n ->
+        println(n.name)
+        gameGraph.connections[n]!!.forEach {
+            println("  ${it}")
+        }
+    }
+}
